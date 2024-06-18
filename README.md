@@ -100,6 +100,7 @@ Para ejecutar la aplicación, sigue estos pasos:
 
     Backend (ASP.NET Core):
         Asegúrate de tener instalado Visual Studio con las cargas de trabajo de desarrollo de ASP.NET Core.
+        Crea la carpeta apiCargueClientes y clona el repositorio  con el comando git clone https://github.com/Stilpz/pruebaTecnicaFullStack-aspnet-react-backend.git
         Abre la solución en Visual Studio.
         Configura la cadena de conexión a la base de datos SQL Server en appsettings.json.
         Compila y ejecuta el proyecto.
