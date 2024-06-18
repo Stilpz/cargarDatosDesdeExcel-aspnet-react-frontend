@@ -11,6 +11,7 @@ function App() {
   const [modalInsertar, setModalInsertar]=useState(false);
   const [modalEditar, setModalEditar]=useState(false);
   const [modalEliminar, setModalEliminar]=useState(false);
+  const [modalCargueMasivo, setModalCargueMasivo]=useState(false);
   const [clienteSeleccionado, setclienteSeleccionado]=useState({
     id: '',
     nombre: '',
@@ -42,6 +43,10 @@ function App() {
 
   const abrirCerrarModalEliminar=()=>{
     setModalEliminar(!modalEliminar);
+  }
+
+  const abrirCerrarModalCargueMasivo=()=>{
+    setModalCargueMasivo(!modalCargueMasivo);
   }
 
   const peticionGet=async()=>{
@@ -117,6 +122,8 @@ function App() {
     <div className="App">
       <br/><br/>
       <button onClick={()=>abrirCerrarModalInsertar()} className="btn btn-success" margin-right >  Insertar nuevo Cliente</button>
+      <br/><br/>
+      <button onClick={()=>abrirCerrarModalCargueMasivo()} className="btn btn-info"> Cargue Masivo de Clientes</button>
       <br/><br/>
       <table className="table table-bordered">
         <thead>
@@ -254,6 +261,21 @@ function App() {
         <ModalFooter>
           <button className="btn btn-danger" onClick={()=>peticionDelete()}>Sí</button>
           <button className="btn btn-secondary" onClick={()=>abrirCerrarModalEliminar()}>No</button>{"   "}
+        </ModalFooter>
+      </Modal>
+
+      <Modal isOpen={modalCargueMasivo}>
+        <ModalHeader>Cargue Masivo de Clientes</ModalHeader>
+        <ModalBody>
+          <div className="form-group">
+            <br /><br />
+            <input type="file" name="nombre"/>
+            <br /><br />
+            <button className="btn btn-primary">Insertar archivo</button>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <button className="btn btn-secondary" onClick={()=>abrirCerrarModalCargueMasivo()}>Cancelar</button>
         </ModalFooter>
       </Modal>
     </div>
