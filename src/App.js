@@ -2,57 +2,38 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
-import { Modal, ModalBody, ModalFooter, ModalHeader } from "reactstrap";
+import { Modal, ModalBody, ModalFooter, ModalHeader, Pagination, PaginationItem, PaginationLink } from "reactstrap";
+import { FaEdit, FaTrash, FaEye, FaSearch } from 'react-icons/fa'; // Importar íconos de FontAwesome
 
 function App() {
   const baseUrl = "https://localhost:44300/api/clientes";
-
-  /**Manejo de estados */
   const [data, setData] = useState([]);
   const [modalInsertar, setModalInsertar] = useState(false);
   const [modalEditar, setModalEditar] = useState(false);
   const [modalEliminar, setModalEliminar] = useState(false);
   const [modalCargueMasivo, setModalCargueMasivo] = useState(false);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState({
-    id: '',
-    nombre: '',
-    apellidos: '',
-    edad: '',
-    email: '',
-    telefono: '',
-    direccion: '',
-    documento: '',
-    tipo_documento: ''
-  });
-
-  // Nuevo estado para manejar archivo CSV y errores
+  const [modalDetalles, setModalDetalles] = useState(false);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState({ id: '', nombre: '', apellidos: '', edad: '', email: '', telefono: '', direccion: '', documento: '', tipo_documento: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [clientsPerPage] = useState(10); // Número de clientes por página
+  const [searchTerm, setSearchTerm] = useState('');
   const [csvFile, setCsvFile] = useState(null);
   const [csvErrors, setCsvErrors] = useState([]);
 
+  // Función para manejar cambios en el formulario
   const handleChange = e => {
     const { name, value } = e.target;
-    setClienteSeleccionado({
-      ...clienteSeleccionado,
-      [name]: value
-    });
+    setClienteSeleccionado({ ...clienteSeleccionado, [name]: value });
   };
 
-  const abrirCerrarModalInsertar = () => {
-    setModalInsertar(!modalInsertar);
-  };
+  // Abrir y cerrar modales
+  const toggleModalInsertar = () => setModalInsertar(!modalInsertar);
+  const toggleModalEditar = () => setModalEditar(!modalEditar);
+  const toggleModalEliminar = () => setModalEliminar(!modalEliminar);
+  const toggleModalCargueMasivo = () => setModalCargueMasivo(!modalCargueMasivo);
+  const toggleModalDetalles = () => setModalDetalles(!modalDetalles);
 
-  const abrirCerrarModalEditar = () => {
-    setModalEditar(!modalEditar);
-  };
-
-  const abrirCerrarModalEliminar = () => {
-    setModalEliminar(!modalEliminar);
-  };
-
-  const abrirCerrarModalCargueMasivo = () => {
-    setModalCargueMasivo(!modalCargueMasivo);
-  };
-
+  // Manejo de carga de archivo CSV
   const handleFileChange = e => {
     const file = e.target.files[0];
     setCsvFile(file);
@@ -74,21 +55,20 @@ function App() {
         }
       });
       console.log('Archivos cargados:', response.data);
-      // Actualizar la lista de clientes después de la carga masiva
-      peticionGet();
-      abrirCerrarModalCargueMasivo();
+      peticionGet(); // Actualizar la lista de clientes después de la carga masiva
+      toggleModalCargueMasivo();
+      alert("Carga masiva exitosa.");
     } catch (error) {
       console.error('Error al cargar el archivo:', error);
       if (error.response && error.response.data) {
         // Mostrar errores del CSV en el frontend
         setCsvErrors(error.response.data);
       }
+      alert("Error al cargar el archivo CSV.");
     }
   };
 
-
-  /* Peticiones HTTP*/
-  // Función para obtener la lista de clientes: Get
+  // Obtener lista de clientes
   const peticionGet = async () => {
     try {
       const response = await axios.get(baseUrl);
@@ -102,66 +82,87 @@ function App() {
     peticionGet();
   }, []);
 
-  // Post
-  const peticionPost=async()=>{
+  // Insertar cliente
+  const peticionPost = async () => {
     delete clienteSeleccionado.id;
-    clienteSeleccionado.edad= parseInt(clienteSeleccionado.edad);
-    clienteSeleccionado.telefono= parseInt(clienteSeleccionado.telefono);
-    clienteSeleccionado.documento= parseInt(clienteSeleccionado.documento);
-    await axios.post(baseUrl, clienteSeleccionado)
-    .then(response=>{
-      setData(data.concat(response.data));
-      abrirCerrarModalInsertar();
-    }).catch(error=>{
-      console.log(error);
-    })
-  }
+    clienteSeleccionado.edad = parseInt(clienteSeleccionado.edad);
+    clienteSeleccionado.telefono = parseInt(clienteSeleccionado.telefono);
+    clienteSeleccionado.documento = parseInt(clienteSeleccionado.documento);
 
-  // Put
-  const peticionPut=async()=>{
-    clienteSeleccionado.edad= parseInt(clienteSeleccionado.edad);
-    clienteSeleccionado.telefono= parseInt(clienteSeleccionado.telefono);
-    clienteSeleccionado.documento= parseInt(clienteSeleccionado.documento);
-    await axios.put(baseUrl+"/"+clienteSeleccionado.id, clienteSeleccionado)
-    .then(response=>{
-      var respuesta = response.data;
-      var dataAuxiliar = data;
-      dataAuxiliar.map(cliente=>{
-        if (cliente.id===clienteSeleccionado.id) {
-          cliente.nombre=respuesta.nombre;
-          cliente.apellidos=respuesta.apellidos;
-          cliente.edad=respuesta.edad;
-          cliente.email=respuesta.email;
-          cliente.telefono=respuesta.telefono;
-          cliente.direccion=respuesta.direccion;
-          cliente.documento=respuesta.documento;
-          cliente.tipo_documento=respuesta.tipo_documento;
-        }
-      })
-      abrirCerrarModalEditar();
-    }).catch(error=>{
-      console.log(error);
-    })
-  }
+    try {
+      const response = await axios.post(baseUrl, clienteSeleccionado);
+      setData([...data, response.data]);
+      toggleModalInsertar();
+      alert("Cliente creado exitosamente.");
+    } catch (error) {
+      console.error('Error al crear el cliente:', error);
+      alert("Error al crear el cliente.");
+    }
+  };
 
-  // Delete
-  const peticionDelete=async()=>{
-    await axios.delete(baseUrl+"/"+clienteSeleccionado.id)
-    .then(response=>{
-      setData(data.filter(cliente=>cliente.id!==response.data));
-      abrirCerrarModalEliminar();
-    }).catch(error=>{
-      console.log(error);
-    })
-  }
+  // Editar cliente
+  const peticionPut = async () => {
+    clienteSeleccionado.edad = parseInt(clienteSeleccionado.edad);
+    clienteSeleccionado.telefono = parseInt(clienteSeleccionado.telefono);
+    clienteSeleccionado.documento = parseInt(clienteSeleccionado.documento);
+
+    try {
+      const response = await axios.put(`${baseUrl}/${clienteSeleccionado.id}`, clienteSeleccionado);
+      setData(data.map(cliente => cliente.id === clienteSeleccionado.id ? response.data : cliente ));
+      toggleModalEditar();
+      alert("Cliente editado exitosamente.");
+    } catch (error) {
+      console.error('Error al editar el cliente:', error);
+      alert("Error al editar el cliente.");
+    }
+  };
+
+  // Eliminar cliente
+  const peticionDelete = async () => {
+    try {
+      await axios.delete(`${baseUrl}/${clienteSeleccionado.id}`);
+      setData(data.filter(cliente => cliente.id !== clienteSeleccionado.id));
+      toggleModalEliminar();
+      alert("Cliente eliminado exitosamente.");
+    } catch (error) {
+      console.error('Error al eliminar el cliente:', error);
+      alert("Error al eliminar el cliente.");
+    }
+  };
+
+  // Función para buscar por documento
+  const filteredClients = data.filter(cliente =>
+    cliente.documento.toString().includes(searchTerm)
+  );
+
+  // Paginación
+  const indexOfLastClient = currentPage * clientsPerPage;
+  const indexOfFirstClient = indexOfLastClient - clientsPerPage;
+  const currentClients = filteredClients.slice(indexOfFirstClient, indexOfLastClient);
+
+  // Cambiar de página
+  const paginate = pageNumber => setCurrentPage(pageNumber);
 
   return (
     <div className="App">
       <br /><br />
-      <button onClick={abrirCerrarModalInsertar} className="btn btn-success">Insertar nuevo Cliente</button>
+      <button onClick={toggleModalInsertar} className="btn btn-success">Insertar nuevo Cliente</button>
       <br /><br />
-      <button onClick={abrirCerrarModalCargueMasivo} className="btn btn-info">Cargue Masivo de Clientes</button>
+      <button onClick={toggleModalCargueMasivo} className="btn btn-info">Cargue Masivo de Clientes</button>
       <br /><br />
+      <div className="input-group mb-3">
+        <div className="input-group-prepend">
+          <span className="input-group-text" id="search-addon"><FaSearch /></span>
+        </div>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Buscar por documento"
+          aria-label="Buscar por documento"
+          aria-describedby="search-addon"
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+      </div>
       <table className="table table-bordered">
         <thead>
           <tr>
@@ -178,7 +179,7 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {data.map(cliente => (
+          {currentClients.map(cliente => (
             <tr key={cliente.id}>
               <td>{cliente.id}</td>
               <td>{cliente.nombre}</td>
@@ -190,56 +191,62 @@ function App() {
               <td>{cliente.documento}</td>
               <td>{cliente.tipo_documento}</td>
               <td>
-                <button className="btn btn-primary" onClick={() => setClienteSeleccionado(cliente, "Editar")}>Editar</button>{" "}
-                <button className="btn btn-danger" onClick={() => setClienteSeleccionado(cliente, "Eliminar")}>Eliminar</button>
+                <button className="btn btn-primary" onClick={() => { setClienteSeleccionado(cliente); toggleModalEditar(); }}><FaEdit /></button>{" "}
+                <button className="btn btn-danger" onClick={() => { setClienteSeleccionado(cliente); toggleModalEliminar(); }}><FaTrash /></button>{" "}
+                <button className="btn btn-info" onClick={() => { setClienteSeleccionado(cliente); toggleModalDetalles(); }}><FaEye /></button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <Pagination>
+        <PaginationItem>
+          <PaginationLink previous onClick={() => paginate(currentPage - 1)} />
+        </PaginationItem>
+        {[...Array(Math.ceil(filteredClients.length / clientsPerPage)).keys()].map(number => (
+          <PaginationItem key={number} active={number + 1 === currentPage}>
+            <PaginationLink onClick={() => paginate(number + 1)}>{number + 1}</PaginationLink>
+          </PaginationItem>
+        ))}
+        <PaginationItem>
+          <PaginationLink next onClick={() => paginate(currentPage + 1)} />
+        </PaginationItem>
+      </Pagination>
 
-      {/* Modal para insertar nuevo cliente */}
+      {/* Modal para insertar cliente */}
       <Modal isOpen={modalInsertar}>
-        <ModalHeader>Insertar datos de Clientes</ModalHeader>
+        <ModalHeader>Insertar nuevo Cliente</ModalHeader>
         <ModalBody>
           <div className="form-group">
             <label>Nombre</label>
-            <br />
-            <input type="text" className="form-control" name="nombre" onChange={handleChange}/>
+            <input type="text" className="form-control" name="nombre" onChange={handleChange} />
             <br />
             <label>Apellidos</label>
-            <br />
-            <input type="text" className="form-control" name="apellidos" onChange={handleChange}/>
+            <input type="text" className="form-control" name="apellidos" onChange={handleChange} />
             <br />
             <label>Edad</label>
+            <input type="text" className="form-control" name="edad" onChange={handleChange} />
             <br />
-            <input type="text" className="form-control" name="edad" onChange={handleChange}/>
-            <br />
-            <label>Correo Electronico</label>
-            <br />
-            <input type="text" className="form-control" name="email" onChange={handleChange}/>
+            <label>Correo Electrónico</label>
+            <input type="text" className="form-control" name="email" onChange={handleChange} />
             <br />
             <label>Telefono</label>
-            <br />
-            <input type="text" className="form-control" name="telefono" onChange={handleChange}/>
+            <input type="text" className="form-control" name="telefono" onChange={handleChange} />
             <br />
             <label>Direccion</label>
-            <br />
-            <input type="text" className="form-control" name="direccion" onChange={handleChange}/>
+            <input type="text" className="form-control" name="direccion" onChange={handleChange} />
             <br />
             <label>Documento</label>
-            <br />
-            <input type="text" className="form-control" name="documento" onChange={handleChange}/>
+            <input type="text" className="form-control" name="documento" onChange={handleChange} />
             <br />
             <label>Tipo de Documento</label>
-            <br />
-            <input type="text" className="form-control" name="tipo_documento" onChange={handleChange}/>
+            <input type="text" className="form-control" name="tipo_documento" onChange={handleChange} />
             <br />
           </div>
         </ModalBody>
         <ModalFooter>
-          <button className="btn btn-success" onClick={()=>peticionPost()}>Insertar</button>{"   "}
-          <button className="btn btn-danger" onClick={()=>abrirCerrarModalInsertar()}>Cancelar</button>
+          <button className="btn btn-success" onClick={peticionPost}>Insertar</button>{" "}
+          <button className="btn btn-danger" onClick={toggleModalInsertar}>Cancelar</button>
         </ModalFooter>
       </Modal>
 
@@ -249,60 +256,69 @@ function App() {
         <ModalBody>
           <div className="form-group">
             <label>ID</label>
-            <br />
-            <input type="text" className="form-control" readOnly value={clienteSeleccionado && clienteSeleccionado.id}/>
+            <input type="text" className="form-control" readOnly value={clienteSeleccionado && clienteSeleccionado.id} />
             <br />
             <label>Nombre</label>
-            <br />
-            <input type="text" className="form-control" name="nombre" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.nombre}/>
+            <input type="text" className="form-control" name="nombre" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.nombre} />
             <br />
             <label>Apellidos</label>
-            <br />
-            <input type="text" className="form-control" name="apellidos" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.apellidos}/>
+            <input type="text" className="form-control" name="apellidos" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.apellidos} />
             <br />
             <label>Edad</label>
+            <input type="text" className="form-control" name="edad" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.edad} />
             <br />
-            <input type="text" className="form-control" name="edad" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.edad}/>
-            <br />
-            <label>Correo Electronico</label>
-            <br />
-            <input type="text" className="form-control" name="email" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.email}/>
+            <label>Correo Electrónico</label>
+            <input type="text" className="form-control" name="email" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.email} />
             <br />
             <label>Telefono</label>
-            <br />
-            <input type="text" className="form-control" name="telefono" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.telefono}/>
+            <input type="text" className="form-control" name="telefono" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.telefono} />
             <br />
             <label>Direccion</label>
-            <br />
-            <input type="text" className="form-control" name="direccion" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.direccion}/>
+            <input type="text" className="form-control" name="direccion" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.direccion} />
             <br />
             <label>Documento</label>
-            <br />
-            <input type="text" className="form-control" name="documento" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.documento}/>
+            <input type="text" className="form-control" name="documento" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.documento} />
             <br />
             <label>Tipo de Documento</label>
-            <br />
-            <input type="text" className="form-control" name="tipo_documento" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.tipo_documento}/>
+            <input type="text" className="form-control" name="tipo_documento" onChange={handleChange} value={clienteSeleccionado && clienteSeleccionado.tipo_documento} />
             <br />
           </div>
         </ModalBody>
         <ModalFooter>
-          <button className="btn btn-success" onClick={()=>peticionPut()}>Editar</button>{"   "}
-          <button className="btn btn-danger" onClick={()=>abrirCerrarModalEditar()}>Cancelar</button>
-        </ModalFooter>
-      </Modal>
-      
-      {/* Modal para eliminar cliente */}
-      <Modal isOpen={modalEliminar}>
-        <ModalBody>
-          Confirme elimnar el cliente {clienteSeleccionado && clienteSeleccionado.id}, ¿está seguro?
-        </ModalBody>
-        <ModalFooter>
-          <button className="btn btn-danger" onClick={()=>peticionDelete()}>Sí</button>
-          <button className="btn btn-secondary" onClick={()=>abrirCerrarModalEliminar()}>No</button>{"   "}
+          <button className="btn btn-success" onClick={peticionPut}>Editar</button>{" "}
+          <button className="btn btn-danger" onClick={toggleModalEditar}>Cancelar</button>
         </ModalFooter>
       </Modal>
 
+      {/* Modal para eliminar cliente */}
+      <Modal isOpen={modalEliminar}>
+        <ModalBody>
+          Confirme eliminar el cliente {clienteSeleccionado && clienteSeleccionado.id}, ¿está seguro?
+        </ModalBody>
+        <ModalFooter>
+          <button className="btn btn-danger" onClick={peticionDelete}>Sí</button>
+          <button className="btn btn-secondary" onClick={toggleModalEliminar}>No</button>{" "}
+        </ModalFooter>
+      </Modal>
+
+      {/* Modal para detalles del cliente */}
+      <Modal isOpen={modalDetalles}>
+        <ModalHeader>Detalles del Cliente</ModalHeader>
+        <ModalBody>
+          <p><strong>ID:</strong> {clienteSeleccionado && clienteSeleccionado.id}</p>
+          <p><strong>Nombre:</strong> {clienteSeleccionado && clienteSeleccionado.nombre}</p>
+          <p><strong>Apellidos:</strong> {clienteSeleccionado && clienteSeleccionado.apellidos}</p>
+          <p><strong>Edad:</strong> {clienteSeleccionado && clienteSeleccionado.edad}</p>
+          <p><strong>Correo Electrónico:</strong> {clienteSeleccionado && clienteSeleccionado.email}</p>
+          <p><strong>Telefono:</strong> {clienteSeleccionado && clienteSeleccionado.telefono}</p>
+          <p><strong>Dirección:</strong> {clienteSeleccionado && clienteSeleccionado.direccion}</p>
+          <p><strong>Documento:</strong> {clienteSeleccionado && clienteSeleccionado.documento}</p>
+          <p><strong>Tipo Documento:</strong> {clienteSeleccionado && clienteSeleccionado.tipo_documento}</p>
+        </ModalBody>
+        <ModalFooter>
+          <button className="btn btn-secondary" onClick={toggleModalDetalles}>Cerrar</button>
+        </ModalFooter>
+      </Modal>
 
       {/* Modal para carga masiva de clientes desde CSV */}
       <Modal isOpen={modalCargueMasivo}>
@@ -324,8 +340,8 @@ function App() {
           </div>
         </ModalBody>
         <ModalFooter>
-          <button className="btn btn-primary" onClick={handleUploadCsv}>Cargar archivo</button>
-          <button className="btn btn-secondary" onClick={abrirCerrarModalCargueMasivo}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleUploadCsv}>Cargar archivo</button>{" "}
+          <button className="btn btn-secondary" onClick={toggleModalCargueMasivo}>Cancelar</button>
         </ModalFooter>
       </Modal>
     </div>
