@@ -5,14 +5,15 @@ import axios from 'axios';
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "reactstrap";
 
 function App() {
+  const baseUrl = "https://localhost:44300/api/clientes";
 
-  const baseUrl="https://localhost:44300/api/clientes";
-  const [data, setData]=useState([]);
-  const [modalInsertar, setModalInsertar]=useState(false);
-  const [modalEditar, setModalEditar]=useState(false);
-  const [modalEliminar, setModalEliminar]=useState(false);
-  const [modalCargueMasivo, setModalCargueMasivo]=useState(false);
-  const [clienteSeleccionado, setclienteSeleccionado]=useState({
+  /**Manejo de estados */
+  const [data, setData] = useState([]);
+  const [modalInsertar, setModalInsertar] = useState(false);
+  const [modalEditar, setModalEditar] = useState(false);
+  const [modalEliminar, setModalEliminar] = useState(false);
+  const [modalCargueMasivo, setModalCargueMasivo] = useState(false);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState({
     id: '',
     nombre: '',
     apellidos: '',
@@ -22,42 +23,86 @@ function App() {
     direccion: '',
     documento: '',
     tipo_documento: ''
-  })
+  });
 
-  const handleChange=e=>{
-    const {name, value}=e.target;
-    setclienteSeleccionado({
+  // Nuevo estado para manejar archivo CSV y errores
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvErrors, setCsvErrors] = useState([]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setClienteSeleccionado({
       ...clienteSeleccionado,
       [name]: value
     });
-    console.log(clienteSeleccionado);
-  }
+  };
 
-  const abrirCerrarModalInsertar=()=>{
+  const abrirCerrarModalInsertar = () => {
     setModalInsertar(!modalInsertar);
-  }
+  };
 
-  const abrirCerrarModalEditar=()=>{
+  const abrirCerrarModalEditar = () => {
     setModalEditar(!modalEditar);
-  }
+  };
 
-  const abrirCerrarModalEliminar=()=>{
+  const abrirCerrarModalEliminar = () => {
     setModalEliminar(!modalEliminar);
-  }
+  };
 
-  const abrirCerrarModalCargueMasivo=()=>{
+  const abrirCerrarModalCargueMasivo = () => {
     setModalCargueMasivo(!modalCargueMasivo);
-  }
+  };
 
-  const peticionGet=async()=>{
-    await axios.get(baseUrl)
-    .then(response=>{
+  const handleFileChange = e => {
+    const file = e.target.files[0];
+    setCsvFile(file);
+  };
+
+  const handleUploadCsv = async () => {
+    if (!csvFile) {
+      alert("Por favor seleccione un archivo CSV.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', csvFile);
+
+    try {
+      const response = await axios.post(`${baseUrl}/uploadcsv`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      console.log('Archivos cargados:', response.data);
+      // Actualizar la lista de clientes después de la carga masiva
+      peticionGet();
+      abrirCerrarModalCargueMasivo();
+    } catch (error) {
+      console.error('Error al cargar el archivo:', error);
+      if (error.response && error.response.data) {
+        // Mostrar errores del CSV en el frontend
+        setCsvErrors(error.response.data);
+      }
+    }
+  };
+
+
+  /* Peticiones HTTP*/
+  // Función para obtener la lista de clientes: Get
+  const peticionGet = async () => {
+    try {
+      const response = await axios.get(baseUrl);
       setData(response.data);
-    }).catch(error=>{
-      console.log(error);
-    })
-  }
+    } catch (error) {
+      console.error('Error al obtener clientes:', error);
+    }
+  };
 
+  useEffect(() => {
+    peticionGet();
+  }, []);
+
+  // Post
   const peticionPost=async()=>{
     delete clienteSeleccionado.id;
     clienteSeleccionado.edad= parseInt(clienteSeleccionado.edad);
@@ -72,6 +117,7 @@ function App() {
     })
   }
 
+  // Put
   const peticionPut=async()=>{
     clienteSeleccionado.edad= parseInt(clienteSeleccionado.edad);
     clienteSeleccionado.telefono= parseInt(clienteSeleccionado.telefono);
@@ -98,6 +144,7 @@ function App() {
     })
   }
 
+  // Delete
   const peticionDelete=async()=>{
     await axios.delete(baseUrl+"/"+clienteSeleccionado.id)
     .then(response=>{
@@ -108,23 +155,13 @@ function App() {
     })
   }
 
-  const seleccionarCliente=(cliente, caso)=>{
-    setclienteSeleccionado(cliente);
-    (caso==="Editar")?
-    abrirCerrarModalEditar(): abrirCerrarModalEliminar();
-  }
-
-  useEffect(()=>{
-    peticionGet();
-  },[])
-
   return (
     <div className="App">
-      <br/><br/>
-      <button onClick={()=>abrirCerrarModalInsertar()} className="btn btn-success" margin-right >  Insertar nuevo Cliente</button>
-      <br/><br/>
-      <button onClick={()=>abrirCerrarModalCargueMasivo()} className="btn btn-info"> Cargue Masivo de Clientes</button>
-      <br/><br/>
+      <br /><br />
+      <button onClick={abrirCerrarModalInsertar} className="btn btn-success">Insertar nuevo Cliente</button>
+      <br /><br />
+      <button onClick={abrirCerrarModalCargueMasivo} className="btn btn-info">Cargue Masivo de Clientes</button>
+      <br /><br />
       <table className="table table-bordered">
         <thead>
           <tr>
@@ -132,7 +169,7 @@ function App() {
             <th>Nombre</th>
             <th>Apellidos</th>
             <th>Edad</th>
-            <th>Correo Electronico</th>
+            <th>Correo Electrónico</th>
             <th>Telefono</th>
             <th>Direccion</th>
             <th>Documento</th>
@@ -141,7 +178,7 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {data.map(cliente=>(
+          {data.map(cliente => (
             <tr key={cliente.id}>
               <td>{cliente.id}</td>
               <td>{cliente.nombre}</td>
@@ -153,14 +190,15 @@ function App() {
               <td>{cliente.documento}</td>
               <td>{cliente.tipo_documento}</td>
               <td>
-                <button className="btn btn-primary" onClick={()=>seleccionarCliente(cliente, "Editar")}>Editar</button> {" "}
-                <button className="btn btn-danger" onClick={()=>seleccionarCliente(cliente, "Eliminar")}>Eliminar</button>
+                <button className="btn btn-primary" onClick={() => setClienteSeleccionado(cliente, "Editar")}>Editar</button>{" "}
+                <button className="btn btn-danger" onClick={() => setClienteSeleccionado(cliente, "Eliminar")}>Eliminar</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
+      {/* Modal para insertar nuevo cliente */}
       <Modal isOpen={modalInsertar}>
         <ModalHeader>Insertar datos de Clientes</ModalHeader>
         <ModalBody>
@@ -205,7 +243,7 @@ function App() {
         </ModalFooter>
       </Modal>
 
-      
+      {/* Modal para editar cliente */}
       <Modal isOpen={modalEditar}>
         <ModalHeader>Editar datos de Clientes</ModalHeader>
         <ModalBody>
@@ -250,10 +288,11 @@ function App() {
         </ModalBody>
         <ModalFooter>
           <button className="btn btn-success" onClick={()=>peticionPut()}>Editar</button>{"   "}
-          <button className="btn btn-danger" onClick={()=>abrirCerrarModalInsertar()}>Cancelar</button>
+          <button className="btn btn-danger" onClick={()=>abrirCerrarModalEditar()}>Cancelar</button>
         </ModalFooter>
       </Modal>
       
+      {/* Modal para eliminar cliente */}
       <Modal isOpen={modalEliminar}>
         <ModalBody>
           Confirme elimnar el cliente {clienteSeleccionado && clienteSeleccionado.id}, ¿está seguro?
@@ -264,18 +303,29 @@ function App() {
         </ModalFooter>
       </Modal>
 
+
+      {/* Modal para carga masiva de clientes desde CSV */}
       <Modal isOpen={modalCargueMasivo}>
         <ModalHeader>Cargue Masivo de Clientes</ModalHeader>
         <ModalBody>
           <div className="form-group">
-            <br /><br />
-            <input type="file" name="nombre"/>
-            <br /><br />
-            <button className="btn btn-primary">Insertar archivo</button>
+            <input type="file" onChange={handleFileChange} />
+            <br />
+            {csvErrors.length > 0 && (
+              <div className="alert alert-danger" role="alert">
+                Errores encontrados en el archivo CSV:
+                <ul>
+                  {csvErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </ModalBody>
         <ModalFooter>
-          <button className="btn btn-secondary" onClick={()=>abrirCerrarModalCargueMasivo()}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleUploadCsv}>Cargar archivo</button>
+          <button className="btn btn-secondary" onClick={abrirCerrarModalCargueMasivo}>Cancelar</button>
         </ModalFooter>
       </Modal>
     </div>
